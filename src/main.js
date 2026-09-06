@@ -65,7 +65,7 @@ document.querySelector('#app').innerHTML = `
       <h2>Log a QSO</h2>
       <p>Score: <strong id="scoreDisplay">0</strong></p>
 
-      <div class="freqToggleRow" style="margin-bottom:10px;">
+      <div class="freqToggleRow">
         <button id="runFreqToggle" type="button" tabindex="-1">Run Freq: ON</button>
       </div>
 
@@ -82,7 +82,7 @@ document.querySelector('#app').innerHTML = `
         </select></label>
       </div>
 
-      <div class="actionRow" style="margin-top:10px;">
+      <div class="actionRow">
         <button id="addBtn" tabindex="7">Add QSO</button>
         <span style="display:inline-block; width:60px;"></span>
         <button id="clearBtn" type="button" tabindex="-1">Clear</button>
@@ -97,7 +97,7 @@ document.querySelector('#app').innerHTML = `
       <h3>Log</h3>
       <div class="tableWrapper">
       <table id="logTable">
-        <thead><tr><th>Date</th><th>Time</th><th>Callsign</th><th>Freq</th><th>Mode</th><th>Grid</th><th>Grid Multi</th><th>Club</th><th>Club Multi</th><th>Running Score</th></tr></thead>
+        <thead><tr><th>Date</th><th>Time</th><th>Callsign</th><th>Freq</th><th>Mode</th><th>Grid</th><th>Multi</th><th>Club</th><th>Multi</th></tr></thead>
         <tbody></tbody>
       </table>
       </div>
@@ -202,12 +202,12 @@ document.querySelector('#alertOkBtn').addEventListener('click', () => {
 // ---------- Session resume / start fresh ----------
 
 function rebuildTableRow(qso, result, index) {
-  const gridTick = result.isNewGrid ? '✓' : '';
-  const clubTick = result.isNewClub ? '✓' : '';
+  const gridTick = result.isNewGrid ? '<span class="multiTick">✓</span>' : '';
+  const clubTick = result.isNewClub ? '<span class="multiTick">✓</span>' : '';
   const tbody = document.querySelector('#logTable tbody');
   const row = document.createElement('tr');
   row.dataset.index = index;
-  row.innerHTML = `<td>${qso.date}</td><td>${qso.time}</td><td>${qso.callsign}</td><td>${qso.frequency}</td><td>${qso.mode}</td><td>${qso.gridReceived}</td><td>${gridTick}</td><td>${qso.clubReceived}</td><td>${clubTick}</td><td>${result.runningScore}</td>`;
+  row.innerHTML = `<td>${qso.date}</td><td>${qso.time}</td><td>${qso.callsign}</td><td>${qso.frequency}</td><td>${qso.mode}</td><td>${qso.gridReceived}</td><td class="multiCell">${gridTick}</td><td>${qso.clubReceived}</td><td class="multiCell">${clubTick}</td>`;
   attachLongPress(row, index);
   tbody.appendChild(row);
 }

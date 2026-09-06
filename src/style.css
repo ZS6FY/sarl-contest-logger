@@ -1,7 +1,25 @@
+:root {
+  --color-primary: #0057b7;
+  --color-primary-dark: #00468f;
+  --color-bg: #d8e2ee;
+  --color-surface: #f1eaea;
+  --color-border: #9da7b6;
+  --color-text: #1c1e21;
+  --color-text-muted: #383f49;
+  --color-danger: #d92d20;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: system-ui, -apple-system, sans-serif;
   margin: 0;
-  padding: 0 12px;
+  padding: 0 12px 40px;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 
 .container {
@@ -10,28 +28,52 @@ body {
 }
 
 h1 {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   text-align: center;
+  padding: 16px 0 8px;
+  margin: 0;
+  color: var(--color-primary);
 }
 
-/* Each label becomes its own self-contained block: text above, input below.
-   This is what stops labels splitting away from their input boxes. */
+h2, h3 {
+  text-align: center;
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+/* ---------- Inputs & labels ---------- */
+
 #setup label,
-.entryRow label {
+.entryRow label,
+dialog label {
   display: flex;
   flex-direction: column;
-  font-size: 0.9rem;
-  margin: 4px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 6px;
   min-width: 140px;
 }
 
 #setup label input,
 #setup label select,
 .entryRow label input,
-.entryRow label select {
-  font-size: 1.1rem;
-  padding: 8px;
-  margin-top: 2px;
+.entryRow label select,
+dialog label input,
+dialog label select {
+  font-size: 1.05rem;
+  padding: 10px;
+  margin-top: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+#setup label input:focus,
+.entryRow label input:focus,
+dialog label input:focus {
+  outline: none;
+  border-color: var(--color-primary);
 }
 
 #setup,
@@ -39,47 +81,207 @@ h1 {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  padding: 16px;
+  border: 1px solid var(--color-border);
 }
 
-.actionRow button,
-#setup button {
-  font-size: 1rem;
-  padding: 10px 16px;
+/* Operator Setup: one field per line, full width */
+#setup {
+  flex-direction: column;
+}
+
+#setup h2 {
+  align-self: flex-start;
+  margin: 0 0 12px;
+}
+
+#setup label {
+  width: 100%;
+}
+
+#setup label input,
+#setup label select {
+  width: 100%;
+}
+
+#setup #startBtn {
+  align-self: flex-start;
   margin-top: 8px;
 }
 
-/* Log table: allow horizontal scroll on narrow screens instead of squashing
-   or wrapping columns illegibly. */
-.tableWrapper {
-  overflow-x: auto;
-  margin-top: 10px;
+/* ---------- Buttons ---------- */
+
+button {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
 }
 
-#logTable {
-  border-collapse: collapse;
-  white-space: nowrap;
+button:hover {
+  background: #f0f1f3;
 }
 
-#logTable th,
-#logTable td {
-  padding: 6px 10px;
-  border-bottom: 1px solid #ddd;
-  text-align: left;
+/* Primary action: Add QSO, Start Contest — big, bold, unmissable */
+#addBtn,
+#startBtn {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding: 16px 28px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 87, 183, 0.35);
+}
+
+#addBtn:hover,
+#startBtn:hover {
+  background: var(--color-primary-dark);
+}
+
+/* Secondary/utility actions: visually quiet, so they never compete with Add QSO */
+#clearBtn,
+#runFreqToggle {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+  margin-top: 14px;
+}
+
+.freqToggleRow {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+/* Score readout */
+#scoreDisplay {
+  color: var(--color-primary);
+  font-size: 1.4rem;
+}
+
+p:has(> #scoreDisplay) {
+  text-align: center;
+  font-size: 1rem;
+  color: var(--color-text-muted);
 }
 
 dialog {
-  border: 1px solid #999;
-  border-radius: 8px;
-  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 20px;
   max-width: 420px;
   width: 90%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 dialog::backdrop {
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(20, 30, 45, 0.55);
+}
+
+dialog h3 {
+  margin-top: 0;
+}
+
+dialog p {
+  color: var(--color-text);
 }
 
 dialog button {
   margin-right: 8px;
-  margin-top: 8px;
+  margin-top: 12px;
+}
+
+/* Primary confirm actions inside dialogs (Save, Update Now, Yes/Log Anyway, Resume)
+   get the same bold accent treatment as Add QSO, so the "do this" choice
+   is visually obvious over "cancel"-style options. */
+#editSaveBtn,
+#updateNowBtn,
+#logAnywayBtn,
+#resumeBtn,
+#deleteYesBtn,
+#alertOkBtn {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+}
+
+#editSaveBtn:hover,
+#updateNowBtn:hover,
+#logAnywayBtn:hover,
+#resumeBtn:hover,
+#deleteYesBtn:hover,
+#alertOkBtn:hover {
+  background: var(--color-primary-dark);
+}
+
+/* Delete is destructive — a distinct warm color signals "careful" */
+#deleteYesBtn {
+  background: var(--color-danger);
+}
+
+#deleteYesBtn:hover {
+  background: #b3261e;
+}
+
+.multiCell {
+  text-align: center;
+}
+
+.multiTick {
+  color: #1e8e3e;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+#logTable {
+  border-collapse: collapse;
+  width: 100%;
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+#logTable th,
+#logTable td {
+  padding: 10px 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+#logTable th {
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+#logTable tbody tr:hover {
+  background: var(--color-bg);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin-top: 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
 }
