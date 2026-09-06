@@ -18,6 +18,29 @@ let log = null;
 let runFreqMode = true;
 let contestBand = '40m';
 let pendingExportMode = null; // 'cabrillo' or 'both'
+let pendingRowIndex = null;
+
+function attachLongPress(row, index) {
+  let timer = null;
+  const start = () => {
+    timer = setTimeout(() => openRowActionMenu(index), 550);
+  };
+  const cancel = () => clearTimeout(timer);
+
+  row.addEventListener('mousedown', start);
+  row.addEventListener('mouseup', cancel);
+  row.addEventListener('mouseleave', cancel);
+  row.addEventListener('touchstart', start);
+  row.addEventListener('touchend', cancel);
+  row.addEventListener('touchmove', cancel);
+}
+
+function openRowActionMenu(index) {
+  pendingRowIndex = index;
+  const qso = log.getQsos()[index];
+  document.querySelector('#rowActionMsg').textContent = `QSO with ${qso.callsign} (${qso.mode})`;
+  document.querySelector('#rowActionBox').style.display = 'block';
+}
 
 document.querySelector('#app').innerHTML = `
   <div class="container">
@@ -115,19 +138,59 @@ document.querySelector('#app').innerHTML = `
         </select></label>
         <button id="cabConfirmBtn" type="button">Generate Cabrillo</button>
       </div>
+            <div id="rowActionBox" style="display:none; border:1px solid #666; padding:10px; margin:8px 0; max-width:400px;">
+        <p id="rowActionMsg"></p>
+        <button id="rowEditBtn" type="button">Edit</button>
+        <button id="rowDeleteBtn" type="button">Delete</button>
+        <button id="rowCancelBtn" type="button">Cancel</button>
+      </div>
+
+      <div id="editQsoBox" style="display:none; border:1px solid #666; padding:10px; margin:8px 0; max-width:400px;">
+        <h3>Edit QSO</h3>
+        <label>Callsign <input id="editCallsign" type="text" /></label>
+        <label>Frequency (kHz) <input id="editFrequency" type="text" /></label>
+        <label>Mode <select id="editMode">
+          <option value="SSB">SSB</option>
+          <option value="CW">CW</option>
+          <option value="RTTY">RTTY</option>
+        </select></label>
+        <label>Name Received <input id="editNameReceived" type="text" /></label>
+        <label>Grid Received <input id="editGridReceived" type="text" maxlength="4" /></label>
+        <label>Club Received <input id="editClubReceived" type="text" /></label>
+        <button id="editSaveBtn" type="button">Save</button>
+        <button id="editCancelBtn" type="button">Cancel</button>
+        <p id="editErrorMsg" style="color:red"></p>
+      </div>
+
+      <div id="deleteConfirmBox" style="display:none; border:1px solid #666; padding:10px; margin:8px 0; max-width:400px;">
+        <p id="deleteConfirmMsg"></p>
+        <button id="deleteYesBtn" type="button">Yes, Delete</button>
+        <button id="deleteCancelBtn" type="button">Cancel</button>
+      </div>
     </section>
   </div>
 `;
 
 // ---------- Session resume / start fresh ----------
 
-function rebuildTableRow(qso, result) {
+function rebuildTableRow(qso, result, index) {
   const gridTick = result.isNewGrid ? '✓' : '';
   const clubTick = result.isNewClub ? '✓' : '';
   const tbody = document.querySelector('#logTable tbody');
   const row = document.createElement('tr');
+  row.dataset.index = index;
   row.innerHTML = `<td>${qso.date}</td><td>${qso.time}</td><td>${qso.callsign}</td><td>${qso.frequency}</td><td>${qso.mode}</td><td>${qso.gridReceived}</td><td>${gridTick}</td><td>${qso.clubReceived}</td><td>${clubTick}</td><td>${result.runningScore}</td>`;
+  attachLongPress(row, index);
   tbody.appendChild(row);
+}
+
+function renderFullLog() {
+  const tbody = document.querySelector('#logTable tbody');
+  tbody.innerHTML = '';
+  const results = log.getResults();
+  results.forEach((r, i) => rebuildTableRow(r.qso, r, i));
+  const total = results.length ? results[results.length - 1].runningScore : 0;
+  document.querySelector('#scoreDisplay').textContent = total;
 }
 
 function enterLoggingScreen() {
@@ -148,13 +211,10 @@ document.querySelector('#resumeBtn').addEventListener('click', () => {
   contestBand = savedSession.contestBand;
   log = createContestLog(savedSession.operatorProfile, contestDef);
 
-  for (const qso of savedSession.qsos) {
-    const result = log.addQso(qso);
-    if (result.success) {
-      rebuildTableRow(qso, result);
-      document.querySelector('#scoreDisplay').textContent = result.runningScore;
-    }
+    for (const qso of savedSession.qsos) {
+    log.addQso(qso);
   }
+  renderFullLog();
 
   enterLoggingScreen();
 });
@@ -234,8 +294,7 @@ function commitQso(qso) {
   }
 
   errorMsg.textContent = '';
-  document.querySelector('#scoreDisplay').textContent = result.runningScore;
-  rebuildTableRow(qso, result);
+  renderFullLog();
   persistCurrentSession();
 
   clearEntryFields();
@@ -310,6 +369,82 @@ document.querySelector('.entryRow').addEventListener('keydown', (e) => {
     e.preventDefault();
     document.querySelector('#addBtn').click();
   }
+});
+
+// ---------- Row actions: edit / delete ----------
+
+document.querySelector('#rowCancelBtn').addEventListener('click', () => {
+  document.querySelector('#rowActionBox').style.display = 'none';
+  pendingRowIndex = null;
+});
+
+document.querySelector('#rowEditBtn').addEventListener('click', () => {
+  document.querySelector('#rowActionBox').style.display = 'none';
+  const qso = log.getQsos()[pendingRowIndex];
+
+  document.querySelector('#editCallsign').value = qso.callsign;
+  document.querySelector('#editFrequency').value = qso.frequency;
+  document.querySelector('#editMode').value = qso.mode;
+  document.querySelector('#editNameReceived').value = qso.nameReceived;
+  document.querySelector('#editGridReceived').value = qso.gridReceived;
+  document.querySelector('#editClubReceived').value = qso.clubReceived;
+  document.querySelector('#editErrorMsg').textContent = '';
+
+  document.querySelector('#editQsoBox').style.display = 'block';
+});
+
+document.querySelector('#editCancelBtn').addEventListener('click', () => {
+  document.querySelector('#editQsoBox').style.display = 'none';
+  pendingRowIndex = null;
+});
+
+document.querySelector('#editSaveBtn').addEventListener('click', () => {
+  const original = log.getQsos()[pendingRowIndex];
+  const updatedQso = {
+    ...original, // keep original date/time — editing shouldn't rewrite when it happened
+    callsign: document.querySelector('#editCallsign').value.trim().toUpperCase(),
+    frequency: document.querySelector('#editFrequency').value.trim(),
+    mode: document.querySelector('#editMode').value,
+    nameReceived: document.querySelector('#editNameReceived').value.trim(),
+    gridReceived: document.querySelector('#editGridReceived').value.trim().toUpperCase(),
+    clubReceived: document.querySelector('#editClubReceived').value.trim().toUpperCase(),
+  };
+
+  const result = log.updateQso(pendingRowIndex, updatedQso);
+
+  if (!result.success) {
+    document.querySelector('#editErrorMsg').textContent =
+      result.reason === 'duplicate'
+        ? `That would duplicate another QSO with ${updatedQso.callsign} on ${updatedQso.mode}.`
+        : 'Could not save this edit.';
+    return;
+  }
+
+  document.querySelector('#editQsoBox').style.display = 'none';
+  pendingRowIndex = null;
+  renderFullLog();
+  persistCurrentSession();
+});
+
+document.querySelector('#rowDeleteBtn').addEventListener('click', () => {
+  document.querySelector('#rowActionBox').style.display = 'none';
+  const qso = log.getQsos()[pendingRowIndex];
+  document.querySelector('#deleteConfirmMsg').textContent =
+    `Delete the QSO with ${qso.callsign} (${qso.mode})? This cannot be undone.`;
+  document.querySelector('#deleteConfirmBox').style.display = 'block';
+});
+
+document.querySelector('#deleteCancelBtn').addEventListener('click', () => {
+  document.querySelector('#deleteConfirmBox').style.display = 'none';
+  pendingRowIndex = null;
+});
+
+document.querySelector('#deleteYesBtn').addEventListener('click', () => {
+  log.deleteQso(pendingRowIndex);
+  document.querySelector('#deleteConfirmBox').style.display = 'none';
+  pendingRowIndex = null;
+  renderFullLog();
+  persistCurrentSession();
 });
 
 // ---------- Finish contest ----------

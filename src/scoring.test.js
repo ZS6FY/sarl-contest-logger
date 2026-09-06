@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scoreContest } from './scoring.js';
+import { scoreContest, computeMultiplierFlags } from './scoring.js';
 
 const validClubs = new Set(['6PTA', '1DX', '6SRL']);
 
@@ -68,4 +68,22 @@ describe('scoreContest', () => {
     const result = scoreContest(contestDef, qsos);
     expect(result).toEqual([5, 7]);
   });
+
+  describe('computeMultiplierFlags', () => {
+  it('flags first grid/club per QSO, false on repeats', () => {
+    const contestDef = { validClubs: new Set(['6PTA', '1DX']) };
+    const qsos = [
+      { gridReceived: 'KG44', clubReceived: '6PTA' },
+      { gridReceived: 'KG44', clubReceived: '1DX' },
+      { gridReceived: 'KG33', clubReceived: '6PTA' },
+    ];
+
+    const flags = computeMultiplierFlags(contestDef, qsos);
+    expect(flags).toEqual([
+      { isNewGrid: true, isNewClub: true },
+      { isNewGrid: false, isNewClub: true },
+      { isNewGrid: true, isNewClub: false },
+    ]);
+  });
+});
 });

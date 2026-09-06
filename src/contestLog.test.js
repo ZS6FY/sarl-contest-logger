@@ -92,4 +92,58 @@ describe('createContestLog', () => {
     });
     expect(third).toMatchObject({ isNewGrid: true, isNewClub: false });
   });
+
+    it('updates a QSO and recomputes multipliers for the whole log', () => {
+    const log = createContestLog(operatorProfile, contestDef);
+    log.addQso({ callsign: 'ZS4WW', mode: 'SSB', gridReceived: 'KG33', clubReceived: '1DX' });
+    log.addQso({ callsign: 'ZS9XY', mode: 'SSB', gridReceived: 'KG33', clubReceived: '6PTA' });
+
+    // Fix a typo in the first QSO's grid — this is now a different grid than QSO2,
+    // so QSO2's grid should become "new" too (it wasn't before).
+    const result = log.updateQso(0, {
+      callsign: 'ZS4WW', mode: 'SSB', gridReceived: 'KG99', clubReceived: '1DX',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.results[0]).toMatchObject({ isNewGrid: true, isNewClub: true }); // KG99, 1DX
+    expect(result.results[1]).toMatchObject({ isNewGrid: true, isNewClub: true }); // KG33 now new, 6PTA now new
+  });
+
+  it('rejects an update that would duplicate another existing QSO', () => {
+    const log = createContestLog(operatorProfile, contestDef);
+    log.addQso({ callsign: 'ZS4WW', mode: 'SSB', gridReceived: 'KG33', clubReceived: '1DX' });
+    log.addQso({ callsign: 'ZS9XY', mode: 'SSB', gridReceived: 'KG44', clubReceived: '6PTA' });
+
+    // Try to edit QSO2 to have the same callsign+mode as QSO1
+    const result = log.updateQso(1, {
+      callsign: 'ZS4WW', mode: 'SSB', gridReceived: 'KG44', clubReceived: '6PTA',
+    });
+
+    expect(result).toEqual({ success: false, reason: 'duplicate' });
+  });
+
+  it('allows editing a QSO without it flagging itself as a duplicate', () => {
+    const log = createContestLog(operatorProfile, contestDef);
+    log.addQso({ callsign: 'ZS4WW', mode: 'SSB', gridReceived: 'KG33', clubReceived: '1DX' });
+
+    // Same callsign+mode as itself, just correcting the grid — should succeed
+    const result = log.updateQso(0, {
+      callsign: 'ZS4WW', mode: 'SSB', gridReceived: 'KG99', clubReceived: '1DX',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('deletes a QSO and recomputes the remaining log', () => {
+    const log = createContestLog(operatorProfile, contestDef);
+    log.addQso({ callsign: 'ZS4WW', mode: 'SSB', gridReceived: 'KG33', clubReceived: '1DX' });
+    log.addQso({ callsign: 'ZS9XY', mode: 'SSB', gridReceived: 'KG33', clubReceived: '6PTA' });
+
+    const result = log.deleteQso(0);
+
+    expect(result.success).toBe(true);
+    expect(result.results.length).toBe(1);
+    expect(result.results[0]).toMatchObject({ isNewGrid: true, isNewClub: true });
+    
+  });
 });

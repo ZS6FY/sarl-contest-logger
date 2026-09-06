@@ -54,3 +54,22 @@ export function scoreContest(contestDef, qsos) {
 
   return runningScores;
 }
+
+// Returns { isNewGrid, isNewClub } for every QSO, in order — used both when
+// adding a QSO and when recomputing the whole log after an edit or delete,
+// since "first" grid/club status depends on the full ordered history.
+export function computeMultiplierFlags(contestDef, qsos) {
+  const seenGrids = new Set();
+  const seenClubs = new Set();
+
+  return qsos.map((qso) => {
+    const isNewGrid = Boolean(qso.gridReceived) && !seenGrids.has(qso.gridReceived);
+    const clubCode = qso.clubReceived ? qso.clubReceived.trim().toUpperCase() : '';
+    const isNewClub = isValidClub(clubCode, contestDef.validClubs) && !seenClubs.has(clubCode);
+
+    if (isNewGrid) seenGrids.add(qso.gridReceived);
+    if (isNewClub) seenClubs.add(clubCode);
+
+    return { isNewGrid, isNewClub };
+  });
+}
