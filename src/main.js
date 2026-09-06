@@ -10,9 +10,6 @@ import { saveSession, loadSession, clearSession } from './persistence.js';
 import { registerSW } from 'virtual:pwa-register';
 
 
-//test trigger
-//test trigger
-
 const contestDef = {
   newGridBonus: 2,
   newClubBonus: 1,
@@ -27,7 +24,7 @@ let pendingRowIndex = null;
 
 document.querySelector('#app').innerHTML = `
   <div class="container">
-    <h1>SARL Club Contest Logger</h1>
+    <h1>SARL Club Contest Logger (test2)</h1>
 
     <dialog id="sessionCheckDialog">
       <p id="sessionCheckMsg"></p>
