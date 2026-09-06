@@ -550,14 +550,23 @@ document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
     categoryPower: document.querySelector('#cabCategoryPower').value,
   };
 
+  const cabrillo = generateCabrillo(header, log.operatorProfile, contestBand, log.getQsos());
+
   if (pendingExportMode === 'both') {
     const csv = generateCsv(log.operatorProfile, log.getQsos());
     downloadFile(csv, `sarl-club-contest-log-${formatUtcDate(new Date())}.csv`, 'text/csv');
+
+    // Stagger the second download — browsers can silently block multiple
+    // automatic downloads fired back-to-back in the same script execution.
+    setTimeout(() => {
+      downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
+    }, 700);
+
+    document.querySelector('#cabrilloDetailsDialog').close();
+    setTimeout(finishAndReset, 1600);
+  } else {
+    downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
+    document.querySelector('#cabrilloDetailsDialog').close();
+    setTimeout(finishAndReset, 800);
   }
-
-  const cabrillo = generateCabrillo(header, log.operatorProfile, contestBand, log.getQsos());
-  downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
-
-  document.querySelector('#cabrilloDetailsDialog').close();
-  setTimeout(finishAndReset, 800);
 });
