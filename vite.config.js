@@ -5,7 +5,7 @@ export default defineConfig({
   base: '/sarl-contest-logger/',
   plugins: [
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       manifest: {
         name: 'SARL Club Contest Logger',
         short_name: 'ClubLogger',

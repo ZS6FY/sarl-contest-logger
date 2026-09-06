@@ -7,6 +7,11 @@ import { formatUtcDate, formatUtcTime } from './timestamp.js';
 import { generateCsv } from './csvExport.js';
 import { generateCabrillo } from './cabrilloExport.js';
 import { saveSession, loadSession, clearSession } from './persistence.js';
+import { registerSW } from 'virtual:pwa-register';
+
+
+//test trigger
+//test trigger
 
 const contestDef = {
   newGridBonus: 2,
@@ -33,6 +38,12 @@ document.querySelector('#app').innerHTML = `
     <dialog id="alertDialog">
       <p id="alertMsg"></p>
       <button id="alertOkBtn" type="button">OK</button>
+    </dialog>
+
+     <dialog id="updateDialog">
+      <p>A new version of the logger is available.</p>
+      <button id="updateNowBtn" type="button">Update Now</button>
+      <button id="updateLaterBtn" type="button">Later</button>
     </dialog>
 
     <section id="setup">
@@ -155,6 +166,30 @@ document.querySelector('#app').innerHTML = `
     </section>
   </div>
 `;
+
+// ---------- PWA update checking ----------
+// Checked on load, and again every time the app regains focus (e.g. coming
+// back from the app tray) — not just whenever the browser feels like it.
+
+const updateSW = registerSW({
+  onNeedRefresh() {
+    document.querySelector('#updateDialog').showModal();
+  },
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    updateSW(); // checking with no args just re-checks for updates, doesn't force one
+  }
+});
+
+document.querySelector('#updateNowBtn').addEventListener('click', () => {
+  updateSW(true); // true = actually apply the waiting update and reload
+});
+
+document.querySelector('#updateLaterBtn').addEventListener('click', () => {
+  document.querySelector('#updateDialog').close();
+});
 
 // ---------- Generic alert dialog (replaces passive error text) ----------
 
