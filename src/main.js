@@ -7,6 +7,7 @@ import { formatUtcDate, formatUtcTime } from './timestamp.js';
 import { generateCsv } from './csvExport.js';
 import { generateCabrillo } from './cabrilloExport.js';
 import { saveSession, loadSession, clearSession } from './persistence.js';
+import { isInContestFreeZone, isOutsideBand } from './bandPlan.js';
 
 const contestDef = {
   newGridBonus: 2,
@@ -253,6 +254,11 @@ document.querySelector('#addBtn').addEventListener('click', () => {
     errorMsg.textContent = `${qso.frequency} kHz is inside the ${contestBand} contest-free segment — no QSOs may be logged there.`;
     return;
   }
+
+  if (isOutsideBand(contestBand, qso.frequency)) {
+    errorMsg.textContent = `${qso.frequency} kHz is outside the ${contestBand} band — check your frequency entry.`;
+    return;
+  }
   errorMsg.textContent = '';
 
   const issues = [];
@@ -280,7 +286,7 @@ document.querySelector('#addBtn').addEventListener('click', () => {
 
   commitQso(qso);
 });
-
+  
 document.querySelector('#logAnywayBtn').addEventListener('click', () => {
   document.querySelector('#warningBox').style.display = 'none';
   commitQso(getQsoFromForm());
