@@ -2,7 +2,6 @@ import './style.css';
 import { createContestLog } from './contestLog.js';
 import { VALID_CLUB_CODES } from './data/clubs.js';
 import { VALID_GRID_SQUARES } from './data/grids.js';
-import { isInContestFreeZone } from './bandPlan.js';
 import { formatUtcDate, formatUtcTime } from './timestamp.js';
 import { generateCsv } from './csvExport.js';
 import { generateCabrillo } from './cabrilloExport.js';
