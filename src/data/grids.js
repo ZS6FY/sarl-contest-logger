@@ -1,0 +1,27 @@
+// src/data/grids.js
+// Grid squares covering each ZS call area plus neighboring SADC countries
+// that regularly appear in SARL Club Contest logs (source: club-compiled
+// grid reference list). Some grids overlap between call areas — that's
+// expected and fine for validation purposes; we just need "is this a real
+// grid square someone nearby could plausibly report," not which area it
+// belongs to.
+
+export const GRID_REGIONS = [
+  { region: 'Div1 (ZS1/ZR1/ZU1)', grids: 'JF86,JF87,JF88,JF89,JF95,JF96,JF97,JF98,JF99,KF05,KF06,KF07,KF15,KF16,KF17,KF18,KF27,KF28,KE83'.split(',') },
+  { region: 'Div2 (ZS2/ZR2/ZU2)', grids: 'KF15,KF16,KF17,KF25,KF26,KF27,KF28,KF29,KF36,KF37,KF38,KF39,KF47,KF48,KF49,KG40,KF58,KF59'.split(',') },
+  { region: 'Div3 (ZS3/ZR3/ZU3)', grids: 'JF88,JF89,JG80,JG81,JF97,JF98,JF99,JG90,JG91,JG92,JG93,JG94,JG95,KF07,KF08,KF09,KG00,KG01,KG02,KG03,KG04,KG05,KF17,KF18,KF19,KG10,KG11,KG12,KG13,KG14,KF28,KF29,KG20,KG21,KG22,KG23'.split(',') },
+  { region: 'Div4 (ZS4/ZR4/ZU4)', grids: 'KF29,KG20,KG21,KG22,KF39,KG30,KG31,KG32,KG33,KG41,KG42,KG43'.split(',') },
+  { region: 'Div5 (ZS5/ZR5/ZU5)', grids: 'KF49,KG40,KG41,KG42,KF58,KF59,KG50,KG51,KG52,KG53,KG61,KG62,KG63'.split(',') },
+  { region: 'Div6 (ZS6/ZR6/ZU6)', grids: 'KG34,KG35,KG36,KG37,KG44,KG45,KG46,KG47,KG54,KG55,KG56,KG57,KG12,KG13,KG14,KG21,KG22,KG23,KG24,KG25,KG32,KG33,KG42,KG43,KG52,KG53'.split(',') },
+  { region: 'Namibia (V5)', grids: 'JG68,JG69,JG71,JG72,JG73,JG74,JG75,JG76,JG77,JG78,JG79,JG81,JG82,JG83,JG84,JG85,JG86,JG87,JG88,JG89,JG91,JG92,JG93,JG94,JG95,JG96,JG97,JG98,JG99,JH51,JH52,JH60,JH61,JH62,JH63,JH70,JH71,JH72,JH80,JH81,JH82,JH90,JH91,JH92,KG07,KG08,KG09,KH00,KH01,KH02,KH11,KH12,KH21,KH22'.split(',') },
+  { region: 'Botswana (A2)', grids: 'JG95,JG96,JG97,JG98,KG03,KG04,KG05,KG06,KG07,KG08,KG09,KG13,KG14,KG15,KG16,KG17,KG18,KG19,KG24,KG25,KG26,KG27,KG28,KG29,KG35,KG36,KG37,KG38,KG39,KG47,KG48,KH00,KH01,KH10,KH11,KH20,KH21,KH22,KH30'.split(',') },
+  { region: 'Zimbabwe (Z2)', grids: 'KG38,KG39,KG47,KG48,KG49,KG57,KG58,KG59,KG68,KG69,KH20,KH21,KH22,KH30,KH31,KH32,KH33,KH40,KH41,KH42,KH43,KH44,KH50,KH51,KH52,KH53,KH54,KH60,KH61,KH62,KH63'.split(',') },
+  { region: 'Mozambique (C9)', grids: 'KG54,KG55,KG56,KG57,KG58,KG63,KG64,KG65,KG66,KG67,KG68,KG69,KG74,KG75,KG76,KG77,KG78,KG79,KH53,KH54,KH55,KH60,KH61,KH62,KH63,KH64,KH65,KH66,KH70,KH71,KH72,KH73,KH74,KH75,KH76,KH77,KH78,KH81,KH82,KH83,KH84,KH85,KH86,KH87,KH88,KH92,KH93,KH94,KH95,KH96,KH97,KH98,KH99,LH03,LH04,LH05,LH06,LH07,LH08,LH09'.split(',') },
+  { region: 'eSwatini (3DA)', grids: 'KG52,KG53,KG54,KG63,KG64'.split(',') },
+  { region: 'Lesotho (7P)', grids: 'KF39,KF49,KG30,KG31,KG40,KG41'.split(',') },
+];
+
+// Flattened, deduplicated lookup set for validation.
+export const VALID_GRID_SQUARES = new Set(
+  GRID_REGIONS.flatMap((r) => r.grids)
+);
