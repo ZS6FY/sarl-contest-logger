@@ -21,6 +21,8 @@ let runFreqMode = true;
 let contestBand = '40m';
 let pendingExportMode = null; // 'cabrillo' or 'both'
 let pendingRowIndex = null;
+let pendingCsvContent = null;
+let pendingCabrilloContent = null;
 
 document.querySelector('#app').innerHTML = `
   <div class="container">
@@ -129,6 +131,14 @@ document.querySelector('#app').innerHTML = `
         </select></label>
         <button id="cabConfirmBtn" type="button">Generate Cabrillo</button>
         <button id="cabCancelBtn" type="button">Cancel</button>
+      </dialog>
+
+      <dialog id="downloadsReadyDialog">
+        <p>Your files are ready:</p>
+        <button id="downloadCsvBtn" type="button">Download CSV</button>
+        <button id="downloadCabrilloBtn" type="button">Download Cabrillo</button>
+        <br />
+        <button id="downloadsDoneBtn" type="button">Done</button>
       </dialog>
 
       <dialog id="rowActionDialog">
@@ -551,22 +561,32 @@ document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
   };
 
   const cabrillo = generateCabrillo(header, log.operatorProfile, contestBand, log.getQsos());
+  document.querySelector('#cabrilloDetailsDialog').close();
 
   if (pendingExportMode === 'both') {
-    const csv = generateCsv(log.operatorProfile, log.getQsos());
-    downloadFile(csv, `sarl-club-contest-log-${formatUtcDate(new Date())}.csv`, 'text/csv');
-
-    // Stagger the second download — browsers can silently block multiple
-    // automatic downloads fired back-to-back in the same script execution.
-    setTimeout(() => {
-      downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
-    }, 700);
-
-    document.querySelector('#cabrilloDetailsDialog').close();
-    setTimeout(finishAndReset, 1600);
+    // Don't auto-trigger two downloads from one click — browsers can silently
+    // block or flag the second one. Instead, let the operator tap each
+    // download individually, so each is its own genuine user action.
+    pendingCsvContent = generateCsv(log.operatorProfile, log.getQsos());
+    pendingCabrilloContent = cabrillo;
+    document.querySelector('#downloadsReadyDialog').showModal();
   } else {
     downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
-    document.querySelector('#cabrilloDetailsDialog').close();
     setTimeout(finishAndReset, 800);
   }
+});
+
+document.querySelector('#downloadCsvBtn').addEventListener('click', () => {
+  downloadFile(pendingCsvContent, `sarl-club-contest-log-${formatUtcDate(new Date())}.csv`, 'text/csv');
+});
+
+document.querySelector('#downloadCabrilloBtn').addEventListener('click', () => {
+  downloadFile(pendingCabrilloContent, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
+});
+
+document.querySelector('#downloadsDoneBtn').addEventListener('click', () => {
+  document.querySelector('#downloadsReadyDialog').close();
+  pendingCsvContent = null;
+  pendingCabrilloContent = null;
+  finishAndReset();
 });
