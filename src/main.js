@@ -83,10 +83,12 @@ document.querySelector('#app').innerHTML = `
       </div>
 
       <h3>Log</h3>
+      <div class="tableWrapper">
       <table id="logTable">
         <thead><tr><th>Date</th><th>Time</th><th>Callsign</th><th>Freq</th><th>Mode</th><th>Grid</th><th>Grid Multi</th><th>Club</th><th>Club Multi</th><th>Running Score</th></tr></thead>
         <tbody></tbody>
       </table>
+      </div>
 
       <button id="finishBtn" type="button" style="margin-top:20px;">Finish Contest</button>
 
