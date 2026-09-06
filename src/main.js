@@ -24,7 +24,7 @@ let pendingRowIndex = null;
 
 document.querySelector('#app').innerHTML = `
   <div class="container">
-    <h1>SARL Club Contest Logger (test2)</h1>
+    <h1>SARL Club Contest Logger</h1>
 
     <dialog id="sessionCheckDialog">
       <p id="sessionCheckMsg"></p>
