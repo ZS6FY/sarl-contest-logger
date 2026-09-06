@@ -2,11 +2,11 @@ import './style.css';
 import { createContestLog } from './contestLog.js';
 import { VALID_CLUB_CODES } from './data/clubs.js';
 import { VALID_GRID_SQUARES } from './data/grids.js';
+import { isInContestFreeZone, isOutsideBand } from './bandPlan.js';
 import { formatUtcDate, formatUtcTime } from './timestamp.js';
 import { generateCsv } from './csvExport.js';
 import { generateCabrillo } from './cabrilloExport.js';
 import { saveSession, loadSession, clearSession } from './persistence.js';
-import { isInContestFreeZone, isOutsideBand } from './bandPlan.js';
 
 const contestDef = {
   newGridBonus: 2,
@@ -20,37 +20,20 @@ let contestBand = '40m';
 let pendingExportMode = null; // 'cabrillo' or 'both'
 let pendingRowIndex = null;
 
-function attachLongPress(row, index) {
-  let timer = null;
-  const start = () => {
-    timer = setTimeout(() => openRowActionMenu(index), 550);
-  };
-  const cancel = () => clearTimeout(timer);
-
-  row.addEventListener('mousedown', start);
-  row.addEventListener('mouseup', cancel);
-  row.addEventListener('mouseleave', cancel);
-  row.addEventListener('touchstart', start);
-  row.addEventListener('touchend', cancel);
-  row.addEventListener('touchmove', cancel);
-}
-
-function openRowActionMenu(index) {
-  pendingRowIndex = index;
-  const qso = log.getQsos()[index];
-  document.querySelector('#rowActionMsg').textContent = `QSO with ${qso.callsign} (${qso.mode})`;
-  document.querySelector('#rowActionBox').style.display = 'block';
-}
-
 document.querySelector('#app').innerHTML = `
   <div class="container">
     <h1>SARL Club Contest Logger</h1>
 
-    <section id="sessionCheck" style="display:none; border:1px solid orange; padding:10px; max-width:500px;">
+    <dialog id="sessionCheckDialog">
       <p id="sessionCheckMsg"></p>
       <button id="resumeBtn" type="button">Resume</button>
       <button id="startFreshBtn" type="button">Start Fresh</button>
-    </section>
+    </dialog>
+
+    <dialog id="alertDialog">
+      <p id="alertMsg"></p>
+      <button id="alertOkBtn" type="button">OK</button>
+    </dialog>
 
     <section id="setup">
       <h2>Operator Setup</h2>
@@ -97,13 +80,11 @@ document.querySelector('#app').innerHTML = `
         <button id="clearBtn" type="button" tabindex="-1">Clear</button>
       </div>
 
-      <p id="errorMsg" style="color:red"></p>
-
-      <div id="warningBox" style="display:none; border:1px solid orange; padding:8px; margin:8px 0; max-width:400px;">
+      <dialog id="warningDialog">
         <p id="warningMsg"></p>
         <button id="logAnywayBtn" type="button">Log Anyway</button>
         <button id="editQsoBtn" type="button">Edit QSO</button>
-      </div>
+      </dialog>
 
       <h3>Log</h3>
       <div class="tableWrapper">
@@ -115,14 +96,16 @@ document.querySelector('#app').innerHTML = `
 
       <button id="finishBtn" type="button" style="margin-top:20px;">Finish Contest</button>
 
-      <div id="finishBox" style="display:none; border:1px solid green; padding:10px; margin:8px 0; max-width:400px;">
+      <dialog id="finishDialog">
         <p>Export your log:</p>
         <button id="exportCsvOnlyBtn" type="button">Export CSV</button>
         <button id="exportCabrilloOnlyBtn" type="button">Export Cabrillo</button>
         <button id="exportBothBtn" type="button">Export CSV + Cabrillo</button>
-      </div>
+        <br />
+        <button id="finishCancelBtn" type="button">Cancel</button>
+      </dialog>
 
-      <div id="cabrilloDetailsBox" style="display:none; border:1px solid green; padding:10px; margin:8px 0; max-width:400px;">
+      <dialog id="cabrilloDetailsDialog">
         <h3>Cabrillo Details</h3>
         <label>Your Callsign <input id="cabCallsign" type="text" /></label>
         <label>Full Name (Name Surname) <input id="cabName" type="text" /></label>
@@ -137,15 +120,17 @@ document.querySelector('#app').innerHTML = `
           <option value="QRP">QRP</option>
         </select></label>
         <button id="cabConfirmBtn" type="button">Generate Cabrillo</button>
-      </div>
-            <div id="rowActionBox" style="display:none; border:1px solid #666; padding:10px; margin:8px 0; max-width:400px;">
+        <button id="cabCancelBtn" type="button">Cancel</button>
+      </dialog>
+
+      <dialog id="rowActionDialog">
         <p id="rowActionMsg"></p>
         <button id="rowEditBtn" type="button">Edit</button>
         <button id="rowDeleteBtn" type="button">Delete</button>
         <button id="rowCancelBtn" type="button">Cancel</button>
-      </div>
+      </dialog>
 
-      <div id="editQsoBox" style="display:none; border:1px solid #666; padding:10px; margin:8px 0; max-width:400px;">
+      <dialog id="editQsoDialog">
         <h3>Edit QSO</h3>
         <label>Callsign <input id="editCallsign" type="text" /></label>
         <label>Frequency (kHz) <input id="editFrequency" type="text" /></label>
@@ -160,16 +145,27 @@ document.querySelector('#app').innerHTML = `
         <button id="editSaveBtn" type="button">Save</button>
         <button id="editCancelBtn" type="button">Cancel</button>
         <p id="editErrorMsg" style="color:red"></p>
-      </div>
+      </dialog>
 
-      <div id="deleteConfirmBox" style="display:none; border:1px solid #666; padding:10px; margin:8px 0; max-width:400px;">
+      <dialog id="deleteConfirmDialog">
         <p id="deleteConfirmMsg"></p>
         <button id="deleteYesBtn" type="button">Yes, Delete</button>
         <button id="deleteCancelBtn" type="button">Cancel</button>
-      </div>
+      </dialog>
     </section>
   </div>
 `;
+
+// ---------- Generic alert dialog (replaces passive error text) ----------
+
+function showAlert(msg) {
+  document.querySelector('#alertMsg').textContent = msg;
+  document.querySelector('#alertDialog').showModal();
+}
+
+document.querySelector('#alertOkBtn').addEventListener('click', () => {
+  document.querySelector('#alertDialog').close();
+});
 
 // ---------- Session resume / start fresh ----------
 
@@ -193,8 +189,29 @@ function renderFullLog() {
   document.querySelector('#scoreDisplay').textContent = total;
 }
 
+function attachLongPress(row, index) {
+  let timer = null;
+  const start = () => {
+    timer = setTimeout(() => openRowActionMenu(index), 550);
+  };
+  const cancel = () => clearTimeout(timer);
+
+  row.addEventListener('mousedown', start);
+  row.addEventListener('mouseup', cancel);
+  row.addEventListener('mouseleave', cancel);
+  row.addEventListener('touchstart', start);
+  row.addEventListener('touchend', cancel);
+  row.addEventListener('touchmove', cancel);
+}
+
+function openRowActionMenu(index) {
+  pendingRowIndex = index;
+  const qso = log.getQsos()[index];
+  document.querySelector('#rowActionMsg').textContent = `QSO with ${qso.callsign} (${qso.mode})`;
+  document.querySelector('#rowActionDialog').showModal();
+}
+
 function enterLoggingScreen() {
-  document.querySelector('#sessionCheck').style.display = 'none';
   document.querySelector('#setup').style.display = 'none';
   document.querySelector('#logging').style.display = 'block';
 }
@@ -203,25 +220,25 @@ const savedSession = loadSession();
 if (savedSession && savedSession.qsos && savedSession.qsos.length > 0) {
   document.querySelector('#sessionCheckMsg').textContent =
     `Found an unfinished session: ${savedSession.qsos.length} QSOs, last logged ${savedSession.lastLoggedAt} UTC. Resume this session, or start fresh?`;
-  document.querySelector('#sessionCheck').style.display = 'block';
   document.querySelector('#setup').style.display = 'none';
+  document.querySelector('#sessionCheckDialog').showModal();
 }
 
 document.querySelector('#resumeBtn').addEventListener('click', () => {
+  document.querySelector('#sessionCheckDialog').close();
   contestBand = savedSession.contestBand;
   log = createContestLog(savedSession.operatorProfile, contestDef);
 
-    for (const qso of savedSession.qsos) {
+  for (const qso of savedSession.qsos) {
     log.addQso(qso);
   }
   renderFullLog();
-
   enterLoggingScreen();
 });
 
 document.querySelector('#startFreshBtn').addEventListener('click', () => {
   clearSession();
-  document.querySelector('#sessionCheck').style.display = 'none';
+  document.querySelector('#sessionCheckDialog').close();
   document.querySelector('#setup').style.display = 'block';
 });
 
@@ -285,15 +302,13 @@ function persistCurrentSession() {
 }
 
 function commitQso(qso) {
-  const errorMsg = document.querySelector('#errorMsg');
   const result = log.addQso(qso);
 
   if (!result.success) {
-    errorMsg.textContent = `Duplicate: ${qso.callsign} already worked on ${qso.mode}.`;
+    showAlert(`Duplicate: ${qso.callsign} already worked on ${qso.mode}.`);
     return;
   }
 
-  errorMsg.textContent = '';
   renderFullLog();
   persistCurrentSession();
 
@@ -303,23 +318,21 @@ function commitQso(qso) {
 
 document.querySelector('#addBtn').addEventListener('click', () => {
   const qso = getQsoFromForm();
-  const errorMsg = document.querySelector('#errorMsg');
 
   if (!qso.callsign) {
-    errorMsg.textContent = 'Callsign is required.';
+    showAlert('Callsign is required.');
     return;
   }
 
   if (isInContestFreeZone(contestBand, qso.frequency)) {
-    errorMsg.textContent = `${qso.frequency} kHz is inside the ${contestBand} contest-free segment — no QSOs may be logged there.`;
+    showAlert(`${qso.frequency} kHz is inside the ${contestBand} contest-free segment — no QSOs may be logged there.`);
     return;
   }
 
   if (isOutsideBand(contestBand, qso.frequency)) {
-    errorMsg.textContent = `${qso.frequency} kHz is outside the ${contestBand} band — check your frequency entry.`;
+    showAlert(`${qso.frequency} kHz is outside the ${contestBand} band — check your frequency entry.`);
     return;
   }
-  errorMsg.textContent = '';
 
   const issues = [];
   if (!qso.frequency) issues.push('Frequency is blank');
@@ -340,26 +353,24 @@ document.querySelector('#addBtn').addEventListener('click', () => {
   if (issues.length > 0) {
     document.querySelector('#warningMsg').textContent =
       `Check this QSO: ${issues.join('; ')}. Log anyway, or go back and edit?`;
-    document.querySelector('#warningBox').style.display = 'block';
+    document.querySelector('#warningDialog').showModal();
     return;
   }
 
   commitQso(qso);
 });
-  
+
 document.querySelector('#logAnywayBtn').addEventListener('click', () => {
-  document.querySelector('#warningBox').style.display = 'none';
+  document.querySelector('#warningDialog').close();
   commitQso(getQsoFromForm());
 });
 
 document.querySelector('#editQsoBtn').addEventListener('click', () => {
-  document.querySelector('#warningBox').style.display = 'none';
+  document.querySelector('#warningDialog').close();
 });
 
 document.querySelector('#clearBtn').addEventListener('click', () => {
   clearEntryFields();
-  document.querySelector('#errorMsg').textContent = '';
-  document.querySelector('#warningBox').style.display = 'none';
   document.querySelector('#callsign').focus();
 });
 
@@ -374,12 +385,12 @@ document.querySelector('.entryRow').addEventListener('keydown', (e) => {
 // ---------- Row actions: edit / delete ----------
 
 document.querySelector('#rowCancelBtn').addEventListener('click', () => {
-  document.querySelector('#rowActionBox').style.display = 'none';
+  document.querySelector('#rowActionDialog').close();
   pendingRowIndex = null;
 });
 
 document.querySelector('#rowEditBtn').addEventListener('click', () => {
-  document.querySelector('#rowActionBox').style.display = 'none';
+  document.querySelector('#rowActionDialog').close();
   const qso = log.getQsos()[pendingRowIndex];
 
   document.querySelector('#editCallsign').value = qso.callsign;
@@ -390,18 +401,18 @@ document.querySelector('#rowEditBtn').addEventListener('click', () => {
   document.querySelector('#editClubReceived').value = qso.clubReceived;
   document.querySelector('#editErrorMsg').textContent = '';
 
-  document.querySelector('#editQsoBox').style.display = 'block';
+  document.querySelector('#editQsoDialog').showModal();
 });
 
 document.querySelector('#editCancelBtn').addEventListener('click', () => {
-  document.querySelector('#editQsoBox').style.display = 'none';
+  document.querySelector('#editQsoDialog').close();
   pendingRowIndex = null;
 });
 
 document.querySelector('#editSaveBtn').addEventListener('click', () => {
   const original = log.getQsos()[pendingRowIndex];
   const updatedQso = {
-    ...original, // keep original date/time — editing shouldn't rewrite when it happened
+    ...original,
     callsign: document.querySelector('#editCallsign').value.trim().toUpperCase(),
     frequency: document.querySelector('#editFrequency').value.trim(),
     mode: document.querySelector('#editMode').value,
@@ -420,28 +431,28 @@ document.querySelector('#editSaveBtn').addEventListener('click', () => {
     return;
   }
 
-  document.querySelector('#editQsoBox').style.display = 'none';
+  document.querySelector('#editQsoDialog').close();
   pendingRowIndex = null;
   renderFullLog();
   persistCurrentSession();
 });
 
 document.querySelector('#rowDeleteBtn').addEventListener('click', () => {
-  document.querySelector('#rowActionBox').style.display = 'none';
+  document.querySelector('#rowActionDialog').close();
   const qso = log.getQsos()[pendingRowIndex];
   document.querySelector('#deleteConfirmMsg').textContent =
     `Delete the QSO with ${qso.callsign} (${qso.mode})? This cannot be undone.`;
-  document.querySelector('#deleteConfirmBox').style.display = 'block';
+  document.querySelector('#deleteConfirmDialog').showModal();
 });
 
 document.querySelector('#deleteCancelBtn').addEventListener('click', () => {
-  document.querySelector('#deleteConfirmBox').style.display = 'none';
+  document.querySelector('#deleteConfirmDialog').close();
   pendingRowIndex = null;
 });
 
 document.querySelector('#deleteYesBtn').addEventListener('click', () => {
   log.deleteQso(pendingRowIndex);
-  document.querySelector('#deleteConfirmBox').style.display = 'none';
+  document.querySelector('#deleteConfirmDialog').close();
   pendingRowIndex = null;
   renderFullLog();
   persistCurrentSession();
@@ -450,7 +461,11 @@ document.querySelector('#deleteYesBtn').addEventListener('click', () => {
 // ---------- Finish contest ----------
 
 document.querySelector('#finishBtn').addEventListener('click', () => {
-  document.querySelector('#finishBox').style.display = 'block';
+  document.querySelector('#finishDialog').showModal();
+});
+
+document.querySelector('#finishCancelBtn').addEventListener('click', () => {
+  document.querySelector('#finishDialog').close();
 });
 
 function downloadFile(content, filename, mimeType) {
@@ -471,6 +486,7 @@ function finishAndReset() {
 }
 
 document.querySelector('#exportCsvOnlyBtn').addEventListener('click', () => {
+  document.querySelector('#finishDialog').close();
   const csv = generateCsv(log.operatorProfile, log.getQsos());
   downloadFile(csv, `sarl-club-contest-log-${formatUtcDate(new Date())}.csv`, 'text/csv');
   setTimeout(finishAndReset, 800);
@@ -478,12 +494,19 @@ document.querySelector('#exportCsvOnlyBtn').addEventListener('click', () => {
 
 document.querySelector('#exportCabrilloOnlyBtn').addEventListener('click', () => {
   pendingExportMode = 'cabrillo';
-  document.querySelector('#cabrilloDetailsBox').style.display = 'block';
+  document.querySelector('#finishDialog').close();
+  document.querySelector('#cabrilloDetailsDialog').showModal();
 });
 
 document.querySelector('#exportBothBtn').addEventListener('click', () => {
   pendingExportMode = 'both';
-  document.querySelector('#cabrilloDetailsBox').style.display = 'block';
+  document.querySelector('#finishDialog').close();
+  document.querySelector('#cabrilloDetailsDialog').showModal();
+});
+
+document.querySelector('#cabCancelBtn').addEventListener('click', () => {
+  document.querySelector('#cabrilloDetailsDialog').close();
+  pendingExportMode = null;
 });
 
 document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
@@ -503,5 +526,6 @@ document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
   const cabrillo = generateCabrillo(header, log.operatorProfile, contestBand, log.getQsos());
   downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
 
+  document.querySelector('#cabrilloDetailsDialog').close();
   setTimeout(finishAndReset, 800);
 });

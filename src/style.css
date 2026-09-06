@@ -66,3 +66,20 @@ h1 {
   border-bottom: 1px solid #ddd;
   text-align: left;
 }
+
+dialog {
+  border: 1px solid #999;
+  border-radius: 8px;
+  padding: 16px;
+  max-width: 420px;
+  width: 90%;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+dialog button {
+  margin-right: 8px;
+  margin-top: 8px;
+}
