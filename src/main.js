@@ -317,8 +317,10 @@ function downloadFile(content, filename, mimeType) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function finishAndReset() {
@@ -329,7 +331,7 @@ function finishAndReset() {
 document.querySelector('#exportCsvOnlyBtn').addEventListener('click', () => {
   const csv = generateCsv(log.operatorProfile, log.getQsos());
   downloadFile(csv, `sarl-club-contest-log-${formatUtcDate(new Date())}.csv`, 'text/csv');
-  finishAndReset();
+  setTimeout(finishAndReset, 800);
 });
 
 document.querySelector('#exportCabrilloOnlyBtn').addEventListener('click', () => {
@@ -359,5 +361,5 @@ document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
   const cabrillo = generateCabrillo(header, log.operatorProfile, contestBand, log.getQsos());
   downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
 
-  finishAndReset();
+  setTimeout(finishAndReset, 800);
 });
