@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  base: '/sarl-contest-logger/',
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -12,7 +13,7 @@ export default defineConfig({
         theme_color: '#0057b7',
         background_color: '#ffffff',
         display: 'standalone',
-        start_url: '/',
+        start_url: '/sarl-contest-logger/',
         scope: '/',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
