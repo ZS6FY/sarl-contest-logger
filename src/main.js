@@ -6,6 +6,7 @@ import { isInContestFreeZone, isOutsideBand } from './bandPlan.js';
 import { formatUtcDate, formatUtcTime } from './timestamp.js';
 import { generateCsv } from './csvExport.js';
 import { generateCabrillo } from './cabrilloExport.js';
+import { generateAdif } from './adifExport.js';
 import { saveSession, loadSession, clearSession } from './persistence.js';
 import { registerSW } from 'virtual:pwa-register';
 
@@ -20,10 +21,8 @@ const contestDef = {
 let log = null;
 let runFreqMode = true;
 let contestBand = '40m';
-let pendingExportMode = null; // 'cabrillo' or 'both'
 let pendingRowIndex = null;
-let pendingCsvContent = null;
-let pendingCabrilloContent = null;
+
 
 document.querySelector('#app').innerHTML = `
   <div class="container">
@@ -48,6 +47,7 @@ document.querySelector('#app').innerHTML = `
 
     <section id="setup">
       <h2>Operator Setup</h2>
+      <label>Your Callsign <input id="opCallsign" type="text" /></label>
       <label>Your Name <input id="opName" type="text" /></label>
       <label>Your Grid <input id="opGrid" type="text" maxlength="4" /></label>
       <label>Your Club Code <input id="opClub" type="text" /></label>
@@ -107,13 +107,14 @@ document.querySelector('#app').innerHTML = `
 
       <button id="finishBtn" type="button" style="margin-top:20px;">Finish Contest</button>
 
-      <dialog id="finishDialog">
-        <p>Export your log:</p>
-        <button id="exportCsvOnlyBtn" type="button">Export CSV</button>
-        <button id="exportCabrilloOnlyBtn" type="button">Export Cabrillo</button>
-        <button id="exportBothBtn" type="button">Export CSV + Cabrillo</button>
+        <dialog id="finishDialog">
+        <p>Export your log (choose any combination):</p>
+        <button id="exportCsvBtn" type="button">Export CSV</button>
+        <button id="exportCabrilloBtn" type="button">Export Cabrillo</button>
+        <button id="exportAdifBtn" type="button">Export ADIF</button>
         <br />
-        <button id="finishCancelBtn" type="button">Cancel</button>
+        <button id="finishDoneBtn" type="button">Done</button>
+        <button id="finishCancelBtn" type="button">Back to Logging</button>
       </dialog>
 
       <dialog id="cabrilloDetailsDialog">
@@ -132,14 +133,6 @@ document.querySelector('#app').innerHTML = `
         </select></label>
         <button id="cabConfirmBtn" type="button">Generate Cabrillo</button>
         <button id="cabCancelBtn" type="button">Cancel</button>
-      </dialog>
-
-      <dialog id="downloadsReadyDialog">
-        <p>Your files are ready:</p>
-        <button id="downloadCsvBtn" type="button">Download CSV</button>
-        <button id="downloadCabrilloBtn" type="button">Download Cabrillo</button>
-        <br />
-        <button id="downloadsDoneBtn" type="button">Done</button>
       </dialog>
 
       <dialog id="rowActionDialog">
@@ -289,7 +282,8 @@ document.querySelector('#startFreshBtn').addEventListener('click', () => {
 
 document.querySelector('#startBtn').addEventListener('click', () => {
   contestBand = document.querySelector('#opBand').value;
-  const operatorProfile = {
+    const operatorProfile = {
+    callsign: document.querySelector('#opCallsign').value.trim().toUpperCase(),
     name: document.querySelector('#opName').value.trim(),
     gridSent: document.querySelector('#opGrid').value.trim().toUpperCase(),
     clubSent: document.querySelector('#opClub').value.trim().toUpperCase(),
@@ -535,28 +529,23 @@ function finishAndReset() {
   window.location.reload();
 }
 
-document.querySelector('#exportCsvOnlyBtn').addEventListener('click', () => {
-  document.querySelector('#finishDialog').close();
+document.querySelector('#exportCsvBtn').addEventListener('click', () => {
   const csv = generateCsv(log.operatorProfile, log.getQsos());
   downloadFile(csv, buildExportFilename('csv', 'CSV'), 'text/csv');
-  setTimeout(finishAndReset, 800);
 });
 
-document.querySelector('#exportCabrilloOnlyBtn').addEventListener('click', () => {
-  pendingExportMode = 'cabrillo';
-  document.querySelector('#finishDialog').close();
-  document.querySelector('#cabrilloDetailsDialog').showModal();
+document.querySelector('#exportAdifBtn').addEventListener('click', () => {
+  const adif = generateAdif(log.operatorProfile, contestBand, log.getQsos());
+  downloadFile(adif, buildExportFilename('adi', 'ADI'), 'text/plain');
 });
 
-document.querySelector('#exportBothBtn').addEventListener('click', () => {
-  pendingExportMode = 'both';
-  document.querySelector('#finishDialog').close();
+document.querySelector('#exportCabrilloBtn').addEventListener('click', () => {
+  document.querySelector('#cabCallsign').value = log.operatorProfile.callsign;
   document.querySelector('#cabrilloDetailsDialog').showModal();
 });
 
 document.querySelector('#cabCancelBtn').addEventListener('click', () => {
   document.querySelector('#cabrilloDetailsDialog').close();
-  pendingExportMode = null;
 });
 
 document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
@@ -569,32 +558,12 @@ document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
   };
 
   const cabrillo = generateCabrillo(header, log.operatorProfile, contestBand, log.getQsos());
+  downloadFile(cabrillo, buildExportFilename('log', 'CAB'), 'text/plain');
+
   document.querySelector('#cabrilloDetailsDialog').close();
-
-  if (pendingExportMode === 'both') {
-    // Don't auto-trigger two downloads from one click — browsers can silently
-    // block or flag the second one. Instead, let the operator tap each
-    // download individually, so each is its own genuine user action.
-    pendingCsvContent = generateCsv(log.operatorProfile, log.getQsos());
-    pendingCabrilloContent = cabrillo;
-    document.querySelector('#downloadsReadyDialog').showModal();
-  } else {
-    downloadFile(cabrillo, buildExportFilename('log', 'CAB'), 'text/plain');
-    setTimeout(finishAndReset, 800);
-  }
 });
 
-document.querySelector('#downloadCsvBtn').addEventListener('click', () => {
-  downloadFile(pendingCsvContent, buildExportFilename('csv', 'CSV'), 'text/csv');
-});
-
-document.querySelector('#downloadCabrilloBtn').addEventListener('click', () => {
-  downloadFile(pendingCabrilloContent, buildExportFilename('log', 'CAB'), 'text/plain');
-});
-
-document.querySelector('#downloadsDoneBtn').addEventListener('click', () => {
-  document.querySelector('#downloadsReadyDialog').close();
-  pendingCsvContent = null;
-  pendingCabrilloContent = null;
+document.querySelector('#finishDoneBtn').addEventListener('click', () => {
+  document.querySelector('#finishDialog').close();
   finishAndReset();
 });
