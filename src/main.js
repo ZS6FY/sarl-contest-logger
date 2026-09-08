@@ -9,6 +9,7 @@ import { generateCabrillo } from './cabrilloExport.js';
 import { generateAdif } from './adifExport.js';
 import { saveSession, loadSession, clearSession } from './persistence.js';
 import { registerSW } from 'virtual:pwa-register';
+import { APP_VERSION } from './version.js';
 
 
 const contestDef = {
@@ -165,6 +166,7 @@ document.querySelector('#app').innerHTML = `
         <button id="deleteCancelBtn" type="button">Cancel</button>
       </dialog>
     </section>
+     <p class="versionFooter">ZS Contest Log v${APP_VERSION}</p>
   </div>
 `;
 

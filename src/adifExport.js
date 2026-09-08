@@ -4,6 +4,8 @@
 // Uses APP_ZSCONTESTLOG_* vendor tags for data with no standard ADIF field
 // (e.g. club), since ADIF has no built-in concept of contest club bonuses.
 
+import { APP_VERSION } from './version.js';
+
 function tag(name, value) {
   if (value === undefined || value === null || value === '') return '';
   const str = String(value);
@@ -22,6 +24,7 @@ export function generateAdif(operatorProfile, contestBand, qsos) {
   lines.push('ADIF Export from ZS Contest Log');
   lines.push('<ADIF_VER:5>3.1.0');
   lines.push('<PROGRAMID:12>ZSContestLog');
+  lines.push(tag('PROGRAMVERSION', APP_VERSION).trim());
   lines.push('<EOH>');
   lines.push('');
 
