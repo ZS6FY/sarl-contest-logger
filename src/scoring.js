@@ -5,12 +5,15 @@
 // Mode points (SARL Club Contest rules 6.1-6.3):
 //   SSB = 2 pts, CW = 4 pts, RTTY = 5 pts
 //
-// Club scoring (rule 6.5): +1 pt for the first QSO with each valid club, once per club.
-// "NONE" (any case) means the contestant claimed no club — no club point.
-// A club code that isn't on the official abbreviated list also scores no club point.
-//
-// Note: gridReceived/clubReceived refer to what the OTHER station reported —
-// scoring is based on grids/clubs worked, not the operator's own "sent" info.
+// Grid/club scoring (rules 6.4/6.5): +2/+1 for the first QSO with each valid
+// grid/club, once each. A grid or club that isn't on the official list scores
+// no bonus — this also correctly implements rule 6.6 (DX QSOs with entities
+// outside SADC get base points only, no grid/club bonus): the official grid
+// list only covers ZS call areas plus the neighboring SADC countries, so a
+// non-SADC grid automatically fails validation and never earns a bonus. Club
+// bonus eligibility depends only on club-code validity, matching real
+// evaluator practice — SADC-based DX operators can legitimately hold valid
+// SA club membership and correctly earn the bonus.
 
 const MODE_POINTS = {
   SSB: 2,
@@ -23,6 +26,12 @@ export function isValidClub(clubCode, validClubs) {
   const normalized = clubCode.trim().toUpperCase();
   if (normalized === 'NONE') return false;
   return validClubs.has(normalized);
+}
+
+export function isValidGrid(gridCode, validGrids) {
+  if (!gridCode) return false;
+  const normalized = gridCode.trim().toUpperCase();
+  return validGrids.has(normalized);
 }
 
 export function scoreContest(contestDef, qsos) {
@@ -38,8 +47,9 @@ export function scoreContest(contestDef, qsos) {
     }
     total += modePoints;
 
-    if (qso.gridReceived && !seenGrids.has(qso.gridReceived)) {
-      seenGrids.add(qso.gridReceived);
+    const gridCode = qso.gridReceived ? qso.gridReceived.trim().toUpperCase() : '';
+    if (isValidGrid(gridCode, contestDef.validGrids) && !seenGrids.has(gridCode)) {
+      seenGrids.add(gridCode);
       total += contestDef.newGridBonus;
     }
 
@@ -55,19 +65,18 @@ export function scoreContest(contestDef, qsos) {
   return runningScores;
 }
 
-// Returns { isNewGrid, isNewClub } for every QSO, in order — used both when
-// adding a QSO and when recomputing the whole log after an edit or delete,
-// since "first" grid/club status depends on the full ordered history.
 export function computeMultiplierFlags(contestDef, qsos) {
   const seenGrids = new Set();
   const seenClubs = new Set();
 
   return qsos.map((qso) => {
-    const isNewGrid = Boolean(qso.gridReceived) && !seenGrids.has(qso.gridReceived);
+    const gridCode = qso.gridReceived ? qso.gridReceived.trim().toUpperCase() : '';
+    const isNewGrid = isValidGrid(gridCode, contestDef.validGrids) && !seenGrids.has(gridCode);
+
     const clubCode = qso.clubReceived ? qso.clubReceived.trim().toUpperCase() : '';
     const isNewClub = isValidClub(clubCode, contestDef.validClubs) && !seenClubs.has(clubCode);
 
-    if (isNewGrid) seenGrids.add(qso.gridReceived);
+    if (isNewGrid) seenGrids.add(gridCode);
     if (isNewClub) seenClubs.add(clubCode);
 
     return { isNewGrid, isNewClub };

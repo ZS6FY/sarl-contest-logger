@@ -14,6 +14,7 @@ const contestDef = {
   newGridBonus: 2,
   newClubBonus: 1,
   validClubs: VALID_CLUB_CODES,
+  validGrids: VALID_GRID_SQUARES,
 };
 
 let log = null;
@@ -522,6 +523,13 @@ function downloadFile(content, filename, mimeType) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
+function buildExportFilename(extension, formatTag) {
+  const now = new Date();
+  const datePart = formatUtcDate(now);
+  const timePart = formatUtcTime(now);
+  return `SARL_ClubContest_${contestBand}_${datePart}_${timePart}_${formatTag}.${extension}`;
+}
+
 function finishAndReset() {
   clearSession();
   window.location.reload();
@@ -530,7 +538,7 @@ function finishAndReset() {
 document.querySelector('#exportCsvOnlyBtn').addEventListener('click', () => {
   document.querySelector('#finishDialog').close();
   const csv = generateCsv(log.operatorProfile, log.getQsos());
-  downloadFile(csv, `sarl-club-contest-log-${formatUtcDate(new Date())}.csv`, 'text/csv');
+  downloadFile(csv, buildExportFilename('csv', 'CSV'), 'text/csv');
   setTimeout(finishAndReset, 800);
 });
 
@@ -571,17 +579,17 @@ document.querySelector('#cabConfirmBtn').addEventListener('click', () => {
     pendingCabrilloContent = cabrillo;
     document.querySelector('#downloadsReadyDialog').showModal();
   } else {
-    downloadFile(cabrillo, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
+    downloadFile(cabrillo, buildExportFilename('log', 'CAB'), 'text/plain');
     setTimeout(finishAndReset, 800);
   }
 });
 
 document.querySelector('#downloadCsvBtn').addEventListener('click', () => {
-  downloadFile(pendingCsvContent, `sarl-club-contest-log-${formatUtcDate(new Date())}.csv`, 'text/csv');
+  downloadFile(pendingCsvContent, buildExportFilename('csv', 'CSV'), 'text/csv');
 });
 
 document.querySelector('#downloadCabrilloBtn').addEventListener('click', () => {
-  downloadFile(pendingCabrilloContent, `sarl-club-contest-log-${formatUtcDate(new Date())}.log`, 'text/plain');
+  downloadFile(pendingCabrilloContent, buildExportFilename('log', 'CAB'), 'text/plain');
 });
 
 document.querySelector('#downloadsDoneBtn').addEventListener('click', () => {

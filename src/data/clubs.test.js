@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { CLUBS, VALID_CLUB_CODES } from './clubs.js';
+import { VALID_GRID_SQUARES } from './grids.js';
 import { scoreContest } from '../scoring.js';
 
 describe('CLUBS data', () => {
@@ -23,21 +24,24 @@ describe('CLUBS data', () => {
     expect(VALID_CLUB_CODES.has('2TEST')).toBe(false);
   });
 
-  it('works end-to-end with scoreContest using the real club list', () => {
+    it('works end-to-end with scoreContest using the real club and grid lists', () => {
     const contestDef = {
       newGridBonus: 2,
       newClubBonus: 1,
       validClubs: VALID_CLUB_CODES,
+      validGrids: VALID_GRID_SQUARES,
     };
 
     const qsos = [
-      { mode: 'SSB', gridReceived: 'KG44', clubReceived: '6PTA' }, // real club
-      { mode: 'SSB', gridReceived: 'KG55', clubReceived: 'NOTREAL' }, // not on list
+      { mode: 'SSB', gridReceived: 'KG44', clubReceived: '6PTA' }, // real club, real grid
+      { mode: 'SSB', gridReceived: 'KG55', clubReceived: 'NOTREAL' }, // real grid, invalid club
     ];
 
-    // QSO1: 2 + 2 (new grid) + 1 (valid new club) = 5
-    // QSO2: 2 + 2 (new grid) + 0 (invalid club) = 4 -> running total 9
+    // QSO1: 2 + 2 (new valid grid) + 1 (valid new club) = 5
+    // QSO2: 2 + 2 (new valid grid) + 0 (invalid club) = 4 -> running total 9
     const result = scoreContest(contestDef, qsos);
     expect(result).toEqual([5, 9]);
   });
+
+    
 });

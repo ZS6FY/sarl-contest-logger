@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { createContestLog } from './contestLog.js';
 
 const validClubs = new Set(['6PTA', '1DX']);
-const contestDef = { newGridBonus: 2, newClubBonus: 1, validClubs };
+const validGrids = new Set(['KG44', 'KG33', 'KG99']);
+const contestDef = { newGridBonus: 2, newClubBonus: 1, validClubs, validGrids };
 const operatorProfile = { name: 'PHIL', gridSent: 'KG44', clubSent: '6PTA' };
 
 describe('createContestLog', () => {
