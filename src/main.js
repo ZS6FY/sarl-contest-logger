@@ -283,14 +283,25 @@ document.querySelector('#startFreshBtn').addEventListener('click', () => {
 // ---------- Contest start ----------
 
 document.querySelector('#startBtn').addEventListener('click', () => {
-  contestBand = document.querySelector('#opBand').value;
-    const operatorProfile = {
+  const operatorProfile = {
     callsign: document.querySelector('#opCallsign').value.trim().toUpperCase(),
     name: document.querySelector('#opName').value.trim(),
     gridSent: document.querySelector('#opGrid').value.trim().toUpperCase(),
     clubSent: document.querySelector('#opClub').value.trim().toUpperCase(),
   };
 
+  const missing = [];
+  if (!operatorProfile.callsign) missing.push('Your Callsign');
+  if (!operatorProfile.name) missing.push('Your Name');
+  if (!operatorProfile.gridSent) missing.push('Your Grid');
+  if (!operatorProfile.clubSent) missing.push('Your Club Code (enter NONE if you have no club)');
+
+  if (missing.length > 0) {
+    showAlert(`Please fill in: ${missing.join(', ')}`);
+    return;
+  }
+
+  contestBand = document.querySelector('#opBand').value;
   log = createContestLog(operatorProfile, contestDef);
   document.querySelector('#qsoMode').value = document.querySelector('#opMode').value;
 
