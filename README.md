@@ -36,12 +36,14 @@ Fields: Callsign, Frequency (kHz), Name/Grid/Club Received, and Mode.
 - **Tab** moves between fields in a sensible order for one-handed entry; pressing **Enter** in any field logs the QSO, same as tapping **Add QSO**.
 - **Run Freq: ON** (default) keeps the frequency field filled in between QSOs, for when you're calling CQ on one frequency. Toggle it **OFF** if you're search-and-pounce tuning across the band — the frequency field will clear after each QSO so you don't forget to update it.
 - **Clear** wipes the entry fields without logging anything (frequency and mode aren't cleared, per the Run Freq setting).
+- **Date and Time (UTC)** auto-fill with the current time when you start logging, but can be edited manually — useful if you're logging on paper during the contest and transcribing afterward. If you manually change the time to something outside this contest's usual UTC window, you'll get a one-time heads-up warning (it won't block you, and won't repeat for every entry after that).
 
 ### What happens if something looks wrong
 
 - **Blank or unrecognized Grid/Club:** you'll get a warning ("Log Anyway" or "Edit QSO") — this doesn't block you, since the field might be blank because you're still getting the info from the other station, but it won't count toward scoring until it's a real, recognized value.
 - **Duplicate contact** (same callsign, same mode): rejected outright, since it doesn't count toward your score. A different mode with the same callsign is fine — that's genuinely a new contact.
 - **Frequency inside the contest-free segment, or outside the band entirely:** blocked outright. These are real, submission-affecting rule violations, not typos to double-check.
+- **Callsign with no number in it:** blocked outright — every real callsign contains a digit somewhere, so this is almost always a typo (e.g. missing the call-area number).
 
 ### Multipliers
 
@@ -51,7 +53,7 @@ The **Multi** columns next to Grid and Club show a green ✓ the first time you 
 
 **Long-press** (or click-and-hold) any row in the log to bring up **Edit** / **Delete** / **Cancel**.
 
-- **Edit** opens a form pre-filled with that QSO's details. Date/Time can't be changed (it reflects when the contact actually happened) — everything else can be corrected. Saving recalculates the *entire* log's running score and multipliers, since fixing an early QSO's grid or club can change which later QSO gets credit for being "first."
+- **Edit** opens a form pre-filled with that QSO's details, including Date/Time — useful for correcting a mistyped timestamp. Saving recalculates the *entire* log's running score and multipliers, and re-sorts the log into correct chronological order, since fixing an early QSO's time, grid, or club can change which other QSO gets credit for being "first."
 - **Delete** removes the QSO entirely after a confirmation, and also recalculates the whole log.
 
 ## If the app crashes or closes mid-contest
