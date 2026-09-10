@@ -2,6 +2,14 @@
 import { scoreContest, computeMultiplierFlags } from './scoring.js';
 import { isDuplicate } from './duplicates.js';
 
+function sortQsosByTimestamp(qsos) {
+  return [...qsos].sort((a, b) => {
+    const aKey = `${a.date || ''}${a.time || ''}`;
+    const bKey = `${b.date || ''}${b.time || ''}`;
+    return aKey.localeCompare(bKey);
+  });
+}
+
 export function createContestLog(operatorProfile, contestDef) {
   let qsos = [];
 
@@ -23,19 +31,21 @@ export function createContestLog(operatorProfile, contestDef) {
       if (isDuplicate(qsos, qso)) {
         return { success: false, reason: 'duplicate' };
       }
-      qsos = [...qsos, qso];
+      qsos = sortQsosByTimestamp([...qsos, qso]);
       const results = buildResults();
-      const last = results[results.length - 1];
+      const addedIndex = qsos.indexOf(qso);
+      const added = results[addedIndex];
       return {
         success: true,
-        runningScore: last.runningScore,
-        isNewGrid: last.isNewGrid,
-        isNewClub: last.isNewClub,
+        runningScore: added.runningScore,
+        isNewGrid: added.isNewGrid,
+        isNewClub: added.isNewClub,
       };
     },
 
-    // Replaces the QSO at `index` and recomputes the entire log, since
-    // editing a grid/club can change which later QSO was "first" to work it.
+    // Replaces the QSO at `index` (index into the CURRENT, already-sorted
+    // array) and recomputes the entire log. If the edit changes date/time,
+    // the array is re-sorted afterward so chronological order stays correct.
     updateQso(index, updatedQso) {
       if (index < 0 || index >= qsos.length) {
         return { success: false, reason: 'invalid-index' };
@@ -45,6 +55,7 @@ export function createContestLog(operatorProfile, contestDef) {
         return { success: false, reason: 'duplicate' };
       }
       qsos = qsos.map((q, i) => (i === index ? updatedQso : q));
+      qsos = sortQsosByTimestamp(qsos);
       return { success: true, results: buildResults() };
     },
 

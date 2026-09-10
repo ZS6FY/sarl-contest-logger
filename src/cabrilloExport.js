@@ -2,6 +2,8 @@
 // Pure function: builds a Cabrillo v3 log for the SARL Club Contests
 // (SARL20CC/40CC/80CC), per the new SARL Cabrillo format standard.
 
+import { APP_VERSION } from './version.js';
+
 const MODE_MAP = { SSB: 'PH', CW: 'CW', RTTY: 'RY' };
 
 const CONTEST_CODES = {
@@ -38,6 +40,7 @@ export function generateCabrillo(header, operatorProfile, contestBand, qsos) {
   lines.push(`TX-Name: ${operatorProfile.name}`);
   lines.push(`NAME: ${header.name}`);
   lines.push(`EMAIL: ${header.email}`);
+  lines.push(`CREATED-BY: ZS Contest Log v${APP_VERSION}`);
 
   for (const qso of qsos) {
     const mode = MODE_MAP[qso.mode];

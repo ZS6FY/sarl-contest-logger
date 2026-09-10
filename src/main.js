@@ -10,6 +10,8 @@ import { generateAdif } from './adifExport.js';
 import { saveSession, loadSession, clearSession } from './persistence.js';
 import { registerSW } from 'virtual:pwa-register';
 import { APP_VERSION } from './version.js';
+import { isWithinContestWindow, suggestUtcCorrection } from './timestampWindow.js';
+import { isValidCallsignFormat } from './callsignValidation.js';
 
 
 const contestDef = {
@@ -23,6 +25,8 @@ let log = null;
 let runFreqMode = true;
 let contestBand = '40m';
 let pendingRowIndex = null;
+let hasWarnedAboutTimeWindow = false;
+let qsoDateTimeManuallyEdited = false;
 
 
 document.querySelector('#app').innerHTML = `
@@ -73,7 +77,7 @@ document.querySelector('#app').innerHTML = `
         <button id="runFreqToggle" type="button" tabindex="-1">Run Freq: ON</button>
       </div>
 
-      <div class="entryRow">
+            <div class="entryRow">
         <label>Callsign <input id="callsign" type="text" tabindex="1" /></label>
         <label>Frequency (kHz) <input id="frequency" type="text" tabindex="2" /></label>
         <label>Name Received <input id="nameReceived" type="text" tabindex="3" /></label>
@@ -84,6 +88,8 @@ document.querySelector('#app').innerHTML = `
           <option value="CW">CW</option>
           <option value="RTTY">RTTY</option>
         </select></label>
+        <label>Date (UTC) <input id="qsoDate" type="text" tabindex="8" /></label>
+        <label>Time (UTC, HHmm) <input id="qsoTime" type="text" tabindex="9" /></label>
       </div>
 
       <div class="actionRow">
@@ -155,6 +161,8 @@ document.querySelector('#app').innerHTML = `
         <label>Name Received <input id="editNameReceived" type="text" /></label>
         <label>Grid Received <input id="editGridReceived" type="text" maxlength="4" /></label>
         <label>Club Received <input id="editClubReceived" type="text" /></label>
+        <label>Date (UTC) <input id="editDate" type="text" /></label>
+        <label>Time (UTC, HHmm) <input id="editTime" type="text" /></label>
         <button id="editSaveBtn" type="button">Save</button>
         <button id="editCancelBtn" type="button">Cancel</button>
         <p id="editErrorMsg" style="color:red"></p>
@@ -205,6 +213,13 @@ document.querySelector('#alertOkBtn').addEventListener('click', () => {
   document.querySelector('#alertDialog').close();
 });
 
+document.querySelector('#qsoDate').addEventListener('input', () => {
+  qsoDateTimeManuallyEdited = true;
+});
+document.querySelector('#qsoTime').addEventListener('input', () => {
+  qsoDateTimeManuallyEdited = true;
+});
+
 // ---------- Session resume / start fresh ----------
 
 function rebuildTableRow(qso, result, index) {
@@ -252,6 +267,7 @@ function openRowActionMenu(index) {
 function enterLoggingScreen() {
   document.querySelector('#setup').style.display = 'none';
   document.querySelector('#logging').style.display = 'block';
+  stampCurrentUtcTime();
 }
 
 const savedSession = loadSession();
@@ -290,7 +306,7 @@ document.querySelector('#startBtn').addEventListener('click', () => {
     clubSent: document.querySelector('#opClub').value.trim().toUpperCase(),
   };
 
-  const missing = [];
+    const missing = [];
   if (!operatorProfile.callsign) missing.push('Your Callsign');
   if (!operatorProfile.name) missing.push('Your Name');
   if (!operatorProfile.gridSent) missing.push('Your Grid');
@@ -298,6 +314,11 @@ document.querySelector('#startBtn').addEventListener('click', () => {
 
   if (missing.length > 0) {
     showAlert(`Please fill in: ${missing.join(', ')}`);
+    return;
+  }
+
+  if (!isValidCallsignFormat(operatorProfile.callsign)) {
+    showAlert(`"${operatorProfile.callsign}" doesn't look like a valid callsign — it needs to contain a number.`);
     return;
   }
 
@@ -319,10 +340,9 @@ document.querySelector('#runFreqToggle').addEventListener('click', () => {
 // ---------- QSO entry ----------
 
 function getQsoFromForm() {
-  const now = new Date();
   return {
-    date: formatUtcDate(now),
-    time: formatUtcTime(now),
+    date: document.querySelector('#qsoDate').value.trim(),
+    time: document.querySelector('#qsoTime').value.trim(),
     callsign: document.querySelector('#callsign').value.trim().toUpperCase(),
     frequency: document.querySelector('#frequency').value.trim(),
     mode: document.querySelector('#qsoMode').value,
@@ -340,6 +360,14 @@ function clearEntryFields() {
   if (!runFreqMode) {
     document.querySelector('#frequency').value = '';
   }
+  stampCurrentUtcTime();
+}
+
+function stampCurrentUtcTime() {
+  const now = new Date();
+  document.querySelector('#qsoDate').value = formatUtcDate(now);
+  document.querySelector('#qsoTime').value = formatUtcTime(now);
+  qsoDateTimeManuallyEdited = false;
 }
 
 function persistCurrentSession() {
@@ -372,6 +400,22 @@ document.querySelector('#addBtn').addEventListener('click', () => {
   if (!qso.callsign) {
     showAlert('Callsign is required.');
     return;
+  }
+
+  if (!isValidCallsignFormat(qso.callsign)) {
+    showAlert(`"${qso.callsign}" doesn't look like a valid callsign — it needs to contain a number.`);
+    return;
+  }
+
+  if (qsoDateTimeManuallyEdited && !hasWarnedAboutTimeWindow) {
+    if (!isWithinContestWindow(contestBand, qso.time)) {
+      const suggestion = suggestUtcCorrection(contestBand, qso.time);
+      const suggestionText = suggestion
+        ? ` This looks like it might be SAST rather than UTC — did you mean ${suggestion} UTC?`
+        : '';
+      showAlert(`${qso.time} is outside this contest's usual UTC time window.${suggestionText} Double-check your entry — this is just a heads-up, the QSO will still log.`);
+      hasWarnedAboutTimeWindow = true;
+    }
   }
 
   if (isInContestFreeZone(contestBand, qso.frequency)) {
@@ -469,7 +513,15 @@ document.querySelector('#editSaveBtn').addEventListener('click', () => {
     nameReceived: document.querySelector('#editNameReceived').value.trim(),
     gridReceived: document.querySelector('#editGridReceived').value.trim().toUpperCase(),
     clubReceived: document.querySelector('#editClubReceived').value.trim().toUpperCase(),
+    date: document.querySelector('#editDate').value.trim(),
+    time: document.querySelector('#editTime').value.trim(),
   };
+
+  if (!isValidCallsignFormat(updatedQso.callsign)) {
+    document.querySelector('#editErrorMsg').textContent =
+      `"${updatedQso.callsign}" doesn't look like a valid callsign — it needs to contain a number.`;
+    return;
+  }
 
   const result = log.updateQso(pendingRowIndex, updatedQso);
 
@@ -485,27 +537,15 @@ document.querySelector('#editSaveBtn').addEventListener('click', () => {
   pendingRowIndex = null;
   renderFullLog();
   persistCurrentSession();
-});
 
-document.querySelector('#rowDeleteBtn').addEventListener('click', () => {
-  document.querySelector('#rowActionDialog').close();
-  const qso = log.getQsos()[pendingRowIndex];
-  document.querySelector('#deleteConfirmMsg').textContent =
-    `Delete the QSO with ${qso.callsign} (${qso.mode})? This cannot be undone.`;
-  document.querySelector('#deleteConfirmDialog').showModal();
-});
-
-document.querySelector('#deleteCancelBtn').addEventListener('click', () => {
-  document.querySelector('#deleteConfirmDialog').close();
-  pendingRowIndex = null;
-});
-
-document.querySelector('#deleteYesBtn').addEventListener('click', () => {
-  log.deleteQso(pendingRowIndex);
-  document.querySelector('#deleteConfirmDialog').close();
-  pendingRowIndex = null;
-  renderFullLog();
-  persistCurrentSession();
+  if (!isWithinContestWindow(contestBand, updatedQso.time) && !hasWarnedAboutTimeWindow) {
+    const suggestion = suggestUtcCorrection(contestBand, updatedQso.time);
+    const suggestionText = suggestion
+      ? ` This looks like it might be SAST rather than UTC — did you mean ${suggestion} UTC?`
+      : '';
+    showAlert(`${updatedQso.time} is outside this contest's usual UTC time window.${suggestionText} Double-check your entry.`);
+    hasWarnedAboutTimeWindow = true;
+  }
 });
 
 // ---------- Finish contest ----------

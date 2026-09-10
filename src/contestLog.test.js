@@ -147,4 +147,40 @@ describe('createContestLog', () => {
     expect(result.results[0]).toMatchObject({ isNewGrid: true, isNewClub: true });
     
   });
+
+    it('re-sorts chronologically on edit, transferring the multiplier credit to whichever QSO actually happened first', () => {
+    const log = createContestLog(operatorProfile, contestDef);
+
+    // Logged in this order, but QSO2 happened earlier in real time
+    log.addQso({
+      callsign: 'ZS4WW', mode: 'SSB', date: '2026-09-06', time: '1530',
+      gridReceived: 'KG33', clubReceived: '1DX',
+    });
+    log.addQso({
+      callsign: 'ZS9XY', mode: 'SSB', date: '2026-09-06', time: '1510',
+      gridReceived: 'KG33', clubReceived: '1DX',
+    });
+
+    // Before any edit: ZS4WW was entered first, so it currently holds the
+    // grid/club credit even though ZS9XY's real time is earlier.
+    let results = log.getResults();
+    expect(results[0].qso.callsign).toBe('ZS9XY'); // already reordered by time
+    expect(results[0].isNewGrid).toBe(true);
+    expect(results[1].qso.callsign).toBe('ZS4WW');
+    expect(results[1].isNewGrid).toBe(false); // KG33 already credited to ZS9XY
+
+    // Now correct ZS4WW's time to be even earlier than ZS9XY's
+    const zs4wwIndex = log.getQsos().findIndex((q) => q.callsign === 'ZS4WW');
+    const result = log.updateQso(zs4wwIndex, {
+      callsign: 'ZS4WW', mode: 'SSB', date: '2026-09-06', time: '1459',
+      gridReceived: 'KG33', clubReceived: '1DX',
+    });
+
+    expect(result.success).toBe(true);
+    // ZS4WW should now be first chronologically, and correctly hold the credit
+    expect(result.results[0].qso.callsign).toBe('ZS4WW');
+    expect(result.results[0].isNewGrid).toBe(true);
+    expect(result.results[1].qso.callsign).toBe('ZS9XY');
+    expect(result.results[1].isNewGrid).toBe(false);
+  });
 });
